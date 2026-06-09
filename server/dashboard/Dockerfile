@@ -36,12 +36,17 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --chown=nextjs:nodejs entrypoint.sh /home/nextjs/entrypoint.sh
-RUN chmod +x /home/nextjs/entrypoint.sh
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY entrypoint.sh /home/nextjs/entrypoint.sh
 
-USER nextjs
+# OpenShift runs as random UID in GID 0 — grant group write
+RUN mkdir -p /app/.next/cache /home/nextjs && \
+    chgrp -R 0 /app /home/nextjs && \
+    chmod -R g=u /app /home/nextjs && \
+    chmod +x /home/nextjs/entrypoint.sh
+
+USER 1001
 
 EXPOSE 3000
 ENV PORT=3000
